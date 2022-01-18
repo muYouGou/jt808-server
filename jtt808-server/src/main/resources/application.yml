@@ -4,7 +4,8 @@ spring:
     url: jdbc:mysql://127.0.0.1:3306/jt-databases
     username: root
 #    password: newsys
-    password: 156354
+    password: root
+#    password: 156354
     driver-class-name: com.mysql.cj.jdbc.Driver
     initialization-mode: never
     hikari:

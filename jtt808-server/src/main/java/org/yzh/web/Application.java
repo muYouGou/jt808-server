@@ -25,5 +25,6 @@ public class Application {
         System.setProperty("com.zaxxer.hikari.aliveBypassWindowMs", "2000");
         SpringApplication.run(Application.class, args);
         log.info("***Spring 启动成功***");
+
     }
 }
