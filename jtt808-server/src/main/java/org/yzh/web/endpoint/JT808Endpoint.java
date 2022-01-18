@@ -58,6 +58,7 @@ public class JT808Endpoint {
 
     @Mapping(types = 终端注册, desc = "终端注册")
     public T8100 register(T0100 message, Session session) {
+        log.error("终端注册信息.");
         session.register(message);
         DeviceInfo deviceInfo = new DeviceInfo();
         deviceInfo.setDeviceId(message.getDeviceId());
@@ -70,6 +71,12 @@ public class JT808Endpoint {
         return result;
     }
 
+    /**
+     * 第二步， 车辆与平台进行鉴权
+     * @param message
+     * @param session
+     * @return
+     */
     @Mapping(types = 终端鉴权, desc = "终端鉴权")
     public T0001 authentication(T0102 message, Session session) {
         session.register(message);
@@ -109,6 +116,10 @@ public class JT808Endpoint {
     public void locationReport(List<T0200> list) {
     }
 
+    /**
+     * TODO 要实现的逻辑
+     * @param message
+     */
     @Mapping(types = 定位数据批量上传, desc = "定位数据批量上传")
     public void locationBatchReport(T0704 message) {
     }
