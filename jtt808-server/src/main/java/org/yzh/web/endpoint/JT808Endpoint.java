@@ -9,15 +9,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.yzh.commons.model.Result;
+import org.yzh.commons.util.EncryptUtils;
 import org.yzh.protocol.basics.JTMessage;
 import org.yzh.protocol.commons.JT808;
 import org.yzh.protocol.t808.*;
 import org.yzh.web.model.enums.SessionKey;
 import org.yzh.web.model.vo.DeviceInfo;
+import org.yzh.web.service.DeviceService;
 import org.yzh.web.service.FileService;
+import org.yzh.web.service.LocationService;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Base64;
 import java.util.List;
 
 import static org.yzh.protocol.commons.JT808.*;
@@ -27,6 +32,18 @@ import static org.yzh.protocol.commons.JT808.*;
 public class JT808Endpoint {
 
     private static final Logger log = LoggerFactory.getLogger(JT808Endpoint.class.getSimpleName());
+
+    /**
+     * 位置
+     */
+    @Autowired
+    private LocationService locationService;
+
+    /**
+     * 设备
+     */
+    @Autowired
+    private DeviceService deviceService;
 
     @Autowired
     private FileService fileService;
@@ -66,8 +83,23 @@ public class JT808Endpoint {
 
         T8100 result = new T8100();
         result.setResponseSerialNo(message.getSerialNo());
-        result.setToken(message.getDeviceId());
-        result.setResultCode(T8100.Success);
+
+//        result.setToken(message.getDeviceId());
+//        result.setResultCode(T8100.Success);
+        Result<DeviceInfo> device = deviceService.register(message);
+        if (device.isSuccess()) {
+            session.setAttribute(SessionKey.DeviceInfo, device.get());
+            session.register(message);
+
+            byte[] bytes = DeviceInfo.toBytes(device.get());
+            bytes = EncryptUtils.encrypt(bytes);
+            String token = Base64.getEncoder().encodeToString(bytes);
+
+            result.setToken(token);
+            result.setResultCode(T8100.Success);
+        } else {
+            result.setResultCode(device.state());
+        }
         return result;
     }
 

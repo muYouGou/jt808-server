@@ -1,11 +1,13 @@
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s # timeout 20s for shutdown
   datasource:
 #    url: jdbc:mysql://192.168.1.187:3306/hussar_v8
     url: jdbc:mysql://127.0.0.1:3306/jt-databases
     username: root
 #    password: newsys
-    password: root
-#    password: 156354
+#    password: root
+    password: 156354
     driver-class-name: com.mysql.cj.jdbc.Driver
     initialization-mode: never
     hikari:
@@ -51,6 +53,7 @@ mybatis:
 
 server:
   port: 8000
+  shutdown: graceful # graceful shudown
 
 jt-server:
   jt808:
