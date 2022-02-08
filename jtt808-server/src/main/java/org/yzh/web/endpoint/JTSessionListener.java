@@ -28,6 +28,6 @@ public class JTSessionListener implements SessionListener {
     @Override
     public void sessionDestroyed(Session session) {
 
-        log.error("sessionDestroyed:==>"+session);
+         log.error("sessionDestroyed:==>"+session);
     }
 }

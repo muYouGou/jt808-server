@@ -19,6 +19,7 @@ public class T8003 extends JTMessage implements Response {
     @Field(totalUnit = 2, desc = "重传包ID列表", version = 1)
     private short[] id;
 
+    @Override
     public int getResponseSerialNo() {
         return responseSerialNo;
     }

@@ -6,8 +6,8 @@ spring:
     url: jdbc:mysql://127.0.0.1:3306/jt-databases
     username: root
 #    password: newsys
-#    password: root
-    password: 156354
+    password: root
+#    password: 156354
     driver-class-name: com.mysql.cj.jdbc.Driver
     initialization-mode: never
     hikari:
@@ -42,6 +42,22 @@ spring:
       date-time: yyyy-MM-dd HH:mm:ss
       date: yyyy-MM-dd
       time: HH:mm:ss
+  kafka:
+    bootstrap-servers: 121.43.140.191:9092
+    consumer:
+      auto-commit-interval: 200ms
+      auto-offset-reset: latest
+      enable-auto-commit: true
+      group-id: test-consumer-group
+      heartbeat-interval: 100ms
+      key-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+    producer:
+      batch-size: 16384
+      buffer-memory: 33554432
+      key-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+      retries: 0
+      value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
 
 mybatis:
   configuration:

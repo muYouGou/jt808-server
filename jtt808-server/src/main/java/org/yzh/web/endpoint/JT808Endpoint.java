@@ -56,11 +56,13 @@ public class JT808Endpoint {
 
     @Mapping(types = 终端心跳, desc = "终端心跳")
     public void heartbeat(JTMessage message, Session session) {
+        log.error("终端心跳："+session.getClientId());
     }
 
     @Mapping(types = 终端注销, desc = "终端注销")
     public void unregister(JTMessage message, Session session) {
         session.invalidate();
+        log.error("终端注销：》》》");
     }
 
     @Mapping(types = 查询服务器时间, desc = "查询服务器时间")
@@ -73,6 +75,15 @@ public class JT808Endpoint {
     public void retransmissionPacket(T8003 message, Session session) {
     }
 
+    /**
+     * 1,终端注册
+     * 2.终端鉴权
+     * 3.终端心跳
+     * 4.终端位置汇报
+     * @param message
+     * @param session
+     * @return
+     */
     @Mapping(types = 终端注册, desc = "终端注册")
     public T8100 register(T0100 message, Session session) {
         log.error("终端注册信息.");
@@ -81,26 +92,41 @@ public class JT808Endpoint {
         deviceInfo.setDeviceId(message.getDeviceId());
         session.setAttribute(SessionKey.DeviceInfo, deviceInfo);
 
+
+        String clientId = session.getClientId();
+        //TODO 发送到kafka topic 将改设备设置上线
         T8100 result = new T8100();
         result.setResponseSerialNo(message.getSerialNo());
-
-//        result.setToken(message.getDeviceId());
-//        result.setResultCode(T8100.Success);
-        Result<DeviceInfo> device = deviceService.register(message);
-        if (device.isSuccess()) {
-            session.setAttribute(SessionKey.DeviceInfo, device.get());
-            session.register(message);
-
-            byte[] bytes = DeviceInfo.toBytes(device.get());
-            bytes = EncryptUtils.encrypt(bytes);
-            String token = Base64.getEncoder().encodeToString(bytes);
-
-            result.setToken(token);
-            result.setResultCode(T8100.Success);
-        } else {
-            result.setResultCode(device.state());
-        }
+        result.setToken(message.getDeviceId());
+        result.setResultCode(T8100.Success);
         return result;
+        //  终端注册入库操作
+//        log.error("终端注册信息.");
+//        session.register(message);
+//        DeviceInfo deviceInfo = new DeviceInfo();
+//        deviceInfo.setDeviceId(message.getDeviceId());
+//        session.setAttribute(SessionKey.DeviceInfo, deviceInfo);
+//
+//        T8100 result = new T8100();
+//        result.setResponseSerialNo(message.getSerialNo());
+//
+////        result.setToken(message.getDeviceId());
+////        result.setResultCode(T8100.Success);
+//        Result<DeviceInfo> device = deviceService.register(message);
+//        if (device.isSuccess()) {
+//            session.setAttribute(SessionKey.DeviceInfo, device.get());
+//            session.register(message);
+//
+//            byte[] bytes = DeviceInfo.toBytes(device.get());
+//            bytes = EncryptUtils.encrypt(bytes);
+//            String token = Base64.getEncoder().encodeToString(bytes);
+//
+//            result.setToken(token);
+//            result.setResultCode(T8100.Success);
+//        } else {
+//            result.setResultCode(device.state());
+//        }
+//        return result;
     }
 
     /**
@@ -146,6 +172,7 @@ public class JT808Endpoint {
     @AsyncBatch(poolSize = 2, maxElements = 4000, maxWait = 1000)
     @Mapping(types = 位置信息汇报, desc = "位置信息汇报")
     public void locationReport(List<T0200> list) {
+        System.out.println(list.size());
     }
 
     /**
@@ -154,6 +181,7 @@ public class JT808Endpoint {
      */
     @Mapping(types = 定位数据批量上传, desc = "定位数据批量上传")
     public void locationBatchReport(T0704 message) {
+        System.out.println(message);
     }
 
     @Mapping(types = {位置信息查询应答, 车辆控制应答}, desc = "位置信息查询应答/车辆控制应答")
@@ -183,6 +211,11 @@ public class JT808Endpoint {
         session.response(message);
     }
 
+    /**
+     * TODO 需要修改
+     * @param message
+     * @param session
+     */
     @Mapping(types = 电子运单上报, desc = "电子运单上报")
     public void ewaybillReport(JTMessage message, Session session) {
     }
