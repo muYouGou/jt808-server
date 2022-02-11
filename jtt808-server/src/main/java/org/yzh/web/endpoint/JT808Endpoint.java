@@ -8,9 +8,11 @@ import io.github.yezhihao.netmc.session.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.HashOperations;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
-import org.yzh.commons.model.Result;
-import org.yzh.commons.util.EncryptUtils;
+import org.yzh.config.RedisConfig;
 import org.yzh.protocol.basics.JTMessage;
 import org.yzh.protocol.commons.JT808;
 import org.yzh.protocol.t808.*;
@@ -19,12 +21,12 @@ import org.yzh.web.model.vo.DeviceInfo;
 import org.yzh.web.service.DeviceService;
 import org.yzh.web.service.FileService;
 import org.yzh.web.service.LocationService;
-
+import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
-
+import java.util.Map;
 import static org.yzh.protocol.commons.JT808.*;
 
 @Endpoint
@@ -48,6 +50,15 @@ public class JT808Endpoint {
     @Autowired
     private FileService fileService;
 
+
+
+    @Value(value="${pgredis.vehicleKey}")
+    private String vehicleKey;
+
+    @Value(value="${pgredis.terminalKey}")
+    private String terminalKey;
+
+
     @Mapping(types = 终端通用应答, desc = "终端通用应答")
     public Object generalResponse(T0001 message, Session session) {
         session.response(message);
@@ -62,6 +73,7 @@ public class JT808Endpoint {
     @Mapping(types = 终端注销, desc = "终端注销")
     public void unregister(JTMessage message, Session session) {
         session.invalidate();
+
         log.error("终端注销：》》》");
     }
 
@@ -75,6 +87,31 @@ public class JT808Endpoint {
     public void retransmissionPacket(T8003 message, Session session) {
     }
 
+
+//    private void initData() {
+                            // base_car
+//        String hql = "from VehicleData where organId is not null and deleted = 0 and simNo is not null and carLicence is not null";
+//        List<VehicleData> vehicleList = this.vehicleDataService.query(hql);
+//        for (VehicleData vd : vehicleList) {
+//            this.vehicleMap.put(vd.getSimNo(), vd);
+//            this.vehiclePlateNoMap.put(vd.getCarLicence(), vd);
+//        }
+                        // base_terminal
+//        hql = "from Terminal where termCode is not null and deleted = 0";
+//        List<Terminal> termList = this.terminalService.query(hql);
+//        for (Terminal vd : termList)
+//            this.terminalMap.put(vd.getTermCode(), vd);
+//        hql = "from GPSRealData where online = ? and simNo is not null";
+//        List ls = this.gpsRealDataService.query(hql, Boolean.valueOf(true));
+//        for (Object obj : ls) {
+//            GPSRealData rd = (GPSRealData)obj;
+//            rd.setOnline(false);
+//            this.realDataMap.put(rd.getSimNo(), rd);
+//            this.updateMap.put(rd.getSimNo(), rd.getSendTime());
+//            this.onlineMap.put(rd.getSimNo(), new Date());
+//        }
+//    }
+
     /**
      * 1,终端注册
      * 2.终端鉴权
@@ -87,19 +124,43 @@ public class JT808Endpoint {
     @Mapping(types = 终端注册, desc = "终端注册")
     public T8100 register(T0100 message, Session session) {
         log.error("终端注册信息.");
-        session.register(message);
-        DeviceInfo deviceInfo = new DeviceInfo();
-        deviceInfo.setDeviceId(message.getDeviceId());
-        session.setAttribute(SessionKey.DeviceInfo, deviceInfo);
 
+        RedisTemplate<String, Object> redisTemplate = RedisConfig.getRedisTemplate();
 
-        String clientId = session.getClientId();
-        //TODO 发送到kafka topic 将改设备设置上线
+        HashOperations<String, String, Object> c = redisTemplate.opsForHash();
+
+        Map<String, Object> terminalKey = c.entries("terminalKey");
+
+        if (terminalKey.containsKey(message.getDeviceId())) {
+            session.register(message);
+            DeviceInfo deviceInfo = new DeviceInfo();
+            deviceInfo.setDeviceId(message.getDeviceId());
+            session.setAttribute(SessionKey.DeviceInfo, deviceInfo);
+
+            String clientId = session.getClientId();
+            //TODO 发送到kafka topic 将改设备设置上线
+            T8100 result = new T8100();
+            result.setResponseSerialNo(message.getSerialNo());
+            result.setToken(message.getDeviceId());
+            result.setResultCode(T8100.Success);
+            return result;
+        }
+
         T8100 result = new T8100();
         result.setResponseSerialNo(message.getSerialNo());
-        result.setToken(message.getDeviceId());
-        result.setResultCode(T8100.Success);
+        result.setResultCode(T8100.NotFoundTerminal);
         return result;
+
+
+
+
+//        String clientId = session.getClientId();
+//        //TODO 发送到kafka topic 将改设备设置上线
+//        T8100 result = new T8100();
+//        result.setResponseSerialNo(message.getSerialNo());
+//        result.setToken(message.getDeviceId());
+//        result.setResultCode(T8100.Success);
+//        return result;
         //  终端注册入库操作
 //        log.error("终端注册信息.");
 //        session.register(message);

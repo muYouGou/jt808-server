@@ -22,17 +22,22 @@ public class DarkRepulsor {
         String hex = "7e0200407c0100000000017299841738ffff000004000000080006eeb6ad02633df701380003006320070719235901040000000b02020016030200210402002c051e3737370000000000000000000000000000000000000000000000000000001105420000004212064d0000004d4d1307000000580058582504000000632a02000a2b040000001430011e310128637e";
         ByteBuf buf = Unpooled.wrappedBuffer(ByteBufUtil.decodeHexDump(hex));
 
-        while (true) {
-            long s = System.currentTimeMillis();
+        JTMessage message = decoder.decode(buf);
+        message.setClientId("012345678901");
 
-            for (int i = 0; i < 100000; i++) {
-                JTMessage message = decoder.decode(buf);
-                message.setSerialNo(message.getSerialNo() + 1);
+//        decoder.
 
-                buf.release();
-                buf = encoder.encode(message);
-            }
-            System.out.println(System.currentTimeMillis() - s);
-        }
+//        while (true) {
+//            long s = System.currentTimeMillis();
+//
+//            for (int i = 0; i < 100000; i++) {
+//                JTMessage message = decoder.decode(buf);
+//                message.setSerialNo(message.getSerialNo() + 1);
+//
+//                buf.release();
+//                buf = encoder.encode(message);
+//            }
+//            System.out.println(System.currentTimeMillis() - s);
+//        }
     }
 }
