@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
 import java.util.List;
@@ -17,7 +18,7 @@ import java.util.List;
  * @date 2022-02-01 00:07
  */
 
-@Component
+@Service
 public class Jt808Produce {
 
     private static final Logger log = LoggerFactory.getLogger(Jt808Produce.class.getSimpleName());

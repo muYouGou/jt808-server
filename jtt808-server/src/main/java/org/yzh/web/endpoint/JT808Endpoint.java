@@ -1,5 +1,6 @@
 package org.yzh.web.endpoint;
 
+import com.alibaba.fastjson.JSON;
 import io.github.yezhihao.netmc.core.annotation.Async;
 import io.github.yezhihao.netmc.core.annotation.AsyncBatch;
 import io.github.yezhihao.netmc.core.annotation.Endpoint;
@@ -11,7 +12,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
+import org.springframework.util.concurrent.ListenableFutureCallback;
+import org.yzh.config.Jt808Produce;
 import org.yzh.config.RedisConfig;
 import org.yzh.protocol.basics.JTMessage;
 import org.yzh.protocol.commons.JT808;
@@ -24,6 +29,7 @@ import org.yzh.web.service.LocationService;
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +63,10 @@ public class JT808Endpoint {
 
     @Value(value="${pgredis.terminalKey}")
     private String terminalKey;
+
+
+    @Autowired
+    KafkaTemplate<String,String> kafkaTemplate;
 
 
     @Mapping(types = 终端通用应答, desc = "终端通用应答")
@@ -129,9 +139,9 @@ public class JT808Endpoint {
 
         HashOperations<String, String, Object> c = redisTemplate.opsForHash();
 
-        Map<String, Object> terminalKey = c.entries("terminalKey");
+        Map<String, Object> terminalKeyOne = c.entries(terminalKey);
 
-        if (terminalKey.containsKey(message.getDeviceId())) {
+        if (terminalKeyOne.containsKey(message.getDeviceId())) {
             session.register(message);
             DeviceInfo deviceInfo = new DeviceInfo();
             deviceInfo.setDeviceId(message.getDeviceId());
@@ -145,6 +155,42 @@ public class JT808Endpoint {
             result.setResultCode(T8100.Success);
             return result;
         }
+
+        List<String> sd = new ArrayList<>();
+        sd.add("1212");
+        Long sd11 =12L;
+        String strinsd = "1212";
+        Integer sd33 = 0;
+//        jt808Produce.sendTripByCarUseTimeInfo(sd,sd11,strinsd,sd33);
+        String key="{\"vehicleId\":"+ sd11 +",\"timestamp\":"+System.currentTimeMillis()+" }";
+        kafkaTemplate.send("testTopic",key,  JSON.toJSONString(sd)).addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
+            @Override
+            public void onFailure(Throwable throwable) {
+                log.error("sent message=[{}] failed!", "testTopic"+":"+key+":"+JSON.toJSONString(sd), throwable);
+            }
+
+            @Override
+            public void onSuccess(SendResult<String, String> stringStringSendResult) {
+                log.info("sent message=[{}] successful!", "testTopic"+":"+key+":"+JSON.toJSONString(sd));
+            }
+        });
+//        String string = JSON.toJSONString(sd);
+
+
+//        kafkaTemplate.send("topic1", string).addCallback(new ListenableFutureCallback<SendResult<String, Object>>() {
+//            @Override
+//            public void onFailure(Throwable ex) {
+//                System.out.println("发送消息失败："+ex.getMessage());
+//            }
+//
+//            @Override
+//            public void onSuccess(SendResult<String, Object> result) {
+//                System.out.println("发送消息成功：" + result.getRecordMetadata().topic() + "-"
+//                        + result.getRecordMetadata().partition() + "-" + result.getRecordMetadata().offset());
+//            }
+//        });
+
+
 
         T8100 result = new T8100();
         result.setResponseSerialNo(message.getSerialNo());
