@@ -18,9 +18,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.yzh.config.Jt808Produce;
 import org.yzh.config.RedisConfig;
+import org.yzh.config.StatusConfig;
 import org.yzh.protocol.basics.JTMessage;
 import org.yzh.protocol.commons.JT808;
 import org.yzh.protocol.t808.*;
+import org.yzh.senddto.RegisterDto;
 import org.yzh.web.model.enums.SessionKey;
 import org.yzh.web.model.vo.DeviceInfo;
 import org.yzh.web.service.DeviceService;
@@ -57,16 +59,18 @@ public class JT808Endpoint {
     private FileService fileService;
 
 
-
     @Value(value="${pgredis.vehicleKey}")
     private String vehicleKey;
 
     @Value(value="${pgredis.terminalKey}")
     private String terminalKey;
 
+    @Value(value = "${kafkaTopic.car-info}")
+    private String topic;
 
     @Autowired
     KafkaTemplate<String,String> kafkaTemplate;
+    private static RedisTemplate<String, Object> redisTemplate = RedisConfig.getRedisTemplate();
 
 
     @Mapping(types = 终端通用应答, desc = "终端通用应答")
@@ -135,20 +139,20 @@ public class JT808Endpoint {
     public T8100 register(T0100 message, Session session) {
         log.error("终端注册信息.");
 
-        RedisTemplate<String, Object> redisTemplate = RedisConfig.getRedisTemplate();
-
         HashOperations<String, String, Object> c = redisTemplate.opsForHash();
 
         Map<String, Object> terminalKeyOne = c.entries(terminalKey);
-
+        // deviceID == 设备id == test123
         if (terminalKeyOne.containsKey(message.getDeviceId())) {
             session.register(message);
             DeviceInfo deviceInfo = new DeviceInfo();
             deviceInfo.setDeviceId(message.getDeviceId());
             session.setAttribute(SessionKey.DeviceInfo, deviceInfo);
 
-            String clientId = session.getClientId();
-            //TODO 发送到kafka topic 将改设备设置上线
+            // simNo 手机号
+            String clientId = message.getClientId();
+            this.sendMessage(message.getClientId(),JSON.toJSONString(RegisterDto.createRegisterDto(clientId, StatusConfig.succ)));
+
             T8100 result = new T8100();
             result.setResponseSerialNo(message.getSerialNo());
             result.setToken(message.getDeviceId());
@@ -156,85 +160,14 @@ public class JT808Endpoint {
             return result;
         }
 
-        List<String> sd = new ArrayList<>();
-        sd.add("1212");
-        Long sd11 =12L;
-        String strinsd = "1212";
-        Integer sd33 = 0;
-//        jt808Produce.sendTripByCarUseTimeInfo(sd,sd11,strinsd,sd33);
-        String key="{\"vehicleId\":"+ sd11 +",\"timestamp\":"+System.currentTimeMillis()+" }";
-        kafkaTemplate.send("testTopic",key,  JSON.toJSONString(sd)).addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
-            @Override
-            public void onFailure(Throwable throwable) {
-                log.error("sent message=[{}] failed!", "testTopic"+":"+key+":"+JSON.toJSONString(sd), throwable);
-            }
-
-            @Override
-            public void onSuccess(SendResult<String, String> stringStringSendResult) {
-                log.info("sent message=[{}] successful!", "testTopic"+":"+key+":"+JSON.toJSONString(sd));
-            }
-        });
-//        String string = JSON.toJSONString(sd);
-
-
-//        kafkaTemplate.send("topic1", string).addCallback(new ListenableFutureCallback<SendResult<String, Object>>() {
-//            @Override
-//            public void onFailure(Throwable ex) {
-//                System.out.println("发送消息失败："+ex.getMessage());
-//            }
-//
-//            @Override
-//            public void onSuccess(SendResult<String, Object> result) {
-//                System.out.println("发送消息成功：" + result.getRecordMetadata().topic() + "-"
-//                        + result.getRecordMetadata().partition() + "-" + result.getRecordMetadata().offset());
-//            }
-//        });
-
-
 
         T8100 result = new T8100();
         result.setResponseSerialNo(message.getSerialNo());
         result.setResultCode(T8100.NotFoundTerminal);
         return result;
-
-
-
-
-//        String clientId = session.getClientId();
-//        //TODO 发送到kafka topic 将改设备设置上线
-//        T8100 result = new T8100();
-//        result.setResponseSerialNo(message.getSerialNo());
-//        result.setToken(message.getDeviceId());
-//        result.setResultCode(T8100.Success);
-//        return result;
-        //  终端注册入库操作
-//        log.error("终端注册信息.");
-//        session.register(message);
-//        DeviceInfo deviceInfo = new DeviceInfo();
-//        deviceInfo.setDeviceId(message.getDeviceId());
-//        session.setAttribute(SessionKey.DeviceInfo, deviceInfo);
-//
-//        T8100 result = new T8100();
-//        result.setResponseSerialNo(message.getSerialNo());
-//
-////        result.setToken(message.getDeviceId());
-////        result.setResultCode(T8100.Success);
-//        Result<DeviceInfo> device = deviceService.register(message);
-//        if (device.isSuccess()) {
-//            session.setAttribute(SessionKey.DeviceInfo, device.get());
-//            session.register(message);
-//
-//            byte[] bytes = DeviceInfo.toBytes(device.get());
-//            bytes = EncryptUtils.encrypt(bytes);
-//            String token = Base64.getEncoder().encodeToString(bytes);
-//
-//            result.setToken(token);
-//            result.setResultCode(T8100.Success);
-//        } else {
-//            result.setResultCode(device.state());
-//        }
-//        return result;
     }
+
+
 
     /**
      * 第二步， 车辆与平台进行鉴权
@@ -381,5 +314,33 @@ public class JT808Endpoint {
     @Mapping(types = 终端RSA公钥, desc = "终端RSA公钥")
     public void rsaSwap(T0A00_8A00 message, Session session) {
         session.response(message);
+    }
+
+
+
+
+
+    private void sendMessage(String simNo,String value) {
+        String key="{\"simNo\":"+ simNo +",\"time·stamp\":"+System.currentTimeMillis()+" }";
+        this.send(key,value);
+    }
+
+    /**
+     * 发布消息
+     * @param key
+     * @param value
+     */
+    private void send(String key,String value){
+        kafkaTemplate.send(topic,key, value).addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
+            @Override
+            public void onFailure(Throwable throwable) {
+                log.error("sent message=[{}] failed!", topic+":"+key+":"+value, throwable);
+            }
+
+            @Override
+            public void onSuccess(SendResult<String, String> stringStringSendResult) {
+                log.info("sent message=[{}] successful!", topic+":"+key+":"+value);
+            }
+        });
     }
 }

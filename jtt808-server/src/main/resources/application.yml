@@ -111,3 +111,7 @@ jt-server:
 pgredis:
   vehicleKey: vehicleKey
   terminalKey: terminalKey
+
+kafkaTopic:
+  car-info: testTopic
+#  car-info: pg_car_info
